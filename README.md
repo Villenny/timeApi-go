@@ -108,7 +108,16 @@ if ok {
 }
 ```
 
+## Sometimes the defaults just aint right
+- the fake checks that your channels are drained and such, passing the the testing context b or t, will give you more info if it detects something and panics
+- cloud build systems under heavy load can take forever to allow bg threads to all run during tests, sometimes you need to wait longer
+- conversely if you have a test that is slow due to all the background sleeping maybe you want to reduce flush time, or eliminate it
 
+```
+time := timeApi.NewFake().
+    SetOptions(timeApi.FakeOptions().WithTesting(t).WithFlushTime(4 * time.Millisecond)).
+    Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
+```
 
 
 
