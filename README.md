@@ -32,6 +32,9 @@ time := timeApi.New()
 startTime := time.Now()
 ```
 
+
+
+
 Using fakeTimeApi:
 - In general advancing the fake clock will cause sleeps after any timer event to allow bg threads to process, for a surprisingly long time too, since cloud build systems tend to be oversubscribed
 ```
@@ -48,6 +51,9 @@ time.Stop()
 AssertEventCount(t, timeApi, 0)
 
 ```
+
+
+
 
 - One of the key features of the fake, is that it allows you to get the serialized list of timer events, including the ability to inject your own events, and then assert the count is what you expect.
 
@@ -84,6 +90,21 @@ AssertEventCount(t, timeApi, 0)
                             actual  : 21
             Test:           TestFakeApi
 ```
+
+
+
+## Injecting your own events
+- the fake time allows you to inject your own events into the time fakes event log, this will greatly help you track down what run when after more complicated tests with many threads
+
+```
+fakeTimeApi, ok := it.timeApi.(*FakeTimeApi)
+if ok {
+    fakeTimeApi.AddEvent("    IntervalTimer: " + it.ticker.name + " " + strconv.Itoa(int(item.Sub(it.started)/time.Millisecond)))
+}
+```
+
+
+## timerProvider convenience wrapper
 
 Using the timerProvider
 - this providers an easy way to start/stop a bg thread that calls a worker function, with race safety etc.

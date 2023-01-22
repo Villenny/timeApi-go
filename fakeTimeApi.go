@@ -605,10 +605,10 @@ func (t *FakeTimeApi) newTimer(d time.Duration, fn func(), typeName string) *Fak
 // the timer must be stopped and—if Stop reports that the timer expired
 // before being stopped—the channel explicitly drained:
 //
-//	if !t.Stop() {
-//		<-t.C
-//	}
-//	t.Reset(d)
+//    if !t.Stop() {
+//        <-t.C
+//    }
+//    t.Reset(d)
 //
 // This should not be done concurrent to other receives from the Timer's
 // channel.
