@@ -296,6 +296,10 @@ func (t *FakeTimeApi) After(d time.Duration) <-chan time.Time {
 	return t.newTimer(d, nil, "After/"+t.getInterestingCaller()).C
 }
 
+// The real AfterFunc waits for the duration to elapse and then calls f
+// in its own goroutine. It returns a Timer that can
+// be used to cancel the call using its Stop method.
+// This version just calls it from whichever goroutine is running the AdvanceClock operation
 func (t *FakeTimeApi) AfterFunc(d time.Duration, f func()) *Timer {
 	i := t.newTimer(d, f, "AfterFunc/"+t.getInterestingCaller())
 	return &Timer{i.C, i, i.name}

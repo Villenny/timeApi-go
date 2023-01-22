@@ -1,5 +1,50 @@
 {
-    "editor.tabSize": 4,
-    "editor.insertSpaces": true,
-    "editor.detectIndentation": false
+    "go.formatTool": "goimports",
+    "go.delveConfig": {
+        "showGlobalVariables": false,
+        "dlvLoadConfig": {
+            "followPointers": true,
+            "maxVariableRecurse": 1,
+            "maxStringLen": 4096,
+            "maxArrayValues": 256,
+            "maxStructFields": -1
+        },
+        "apiVersion": 2
+    },
+    "git.fetchOnPull": true,
+    "go.coverOnSingleTestFile": true,
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--fast",
+        "--disable=bodyclose",
+        "--enable=goconst",
+        "--enable=scopelint",
+        "--disable=varcheck"
+    ],
+    "go.testFlags": [
+        "-v",
+        "-race",
+        "-memprofile", "${workspaceFolder}/memprofile.out",
+        "-cpuprofile", "${workspaceFolder}/profile.out",
+        "-benchtime", "3s"
+    ],
+    "go.coverOnSingleTest": true,
+    "go.editorContextMenuCommands": {
+        "toggleTestFile": true,
+        "addTags": true,
+        "removeTags": false,
+        "testAtCursor": true,
+        "testFile": false,
+        "testPackage": false,
+        "generateTestForFunction": true,
+        "generateTestForFile": false,
+        "generateTestForPackage": false,
+        "addImport": true,
+        "testCoverage": true,
+        "playground": true,
+        "debugTestAtCursor": true
+    },
+    "go.useCodeSnippetsOnFunctionSuggestWithoutType": true,
+    "gitlens.blame.ignoreWhitespace": true,
+    "editor.useTabStops": false
 }
