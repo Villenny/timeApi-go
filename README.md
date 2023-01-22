@@ -1,9 +1,9 @@
 [![GitHub issues](https://img.shields.io/github/issues/Villenny/timeApi-go)](https://github.com/Villenny/timeApi-go/issues)
 [![GitHub forks](https://img.shields.io/github/forks/Villenny/timeApi-go)](https://github.com/Villenny/timeApi-go/network)
 [![GitHub stars](https://img.shields.io/github/stars/Villenny/timeApi-go)](https://github.com/Villenny/timeApi-go/stargazers)
-[![GitHub license](https://img.shields.io/github/license/Villenny/timeApi-go)](https://github.com/Villenny/timeApi-go/blob/master/LICENSE)
-![Go](https://github.com/Villenny/timeApi-go/workflows/Go/badge.svg?branch=master)
-![Codecov branch](https://img.shields.io/codecov/c/github/villenny/timeApi-go/master)
+[![GitHub license](https://img.shields.io/github/license/Villenny/timeApi-go)](https://github.com/Villenny/timeApi-go/blob/main/LICENSE)
+![Go](https://github.com/Villenny/timeApi-go/workflows/Go/badge.svg?branch=main)
+![Codecov branch](https://img.shields.io/codecov/c/github/villenny/timeApi-go/main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Villenny/timeApi-go)](https://goreportcard.com/report/github.com/Villenny/timeApi-go)
 [![Documentation](https://godoc.org/github.com/Villenny/timeApi-go?status.svg)](http://godoc.org/github.com/Villenny/timeApi-go)
 
@@ -98,7 +98,8 @@ AssertEventCount(t, timeApi, 0)
 ```
 
 ## Injecting your own events
-- the fake time allows you to inject your own events into the time fakes event log, this will greatly help you track down what run when after more complicated tests with many threads
+- the fake time allows you to inject your own events into the time fakes event log
+- this will greatly help you track down what ran when after more complicated tests with many threads
 
 ```
 fakeTimeApi, ok := it.timeApi.(*FakeTimeApi)
