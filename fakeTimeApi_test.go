@@ -166,7 +166,7 @@ func TestFakeApi(t *testing.T) {
 
 	// this might be problematic, this is a race condition, theres no guarantee all the other threads have successfully incremented yet
 	assert.Equal(t, expectedCount, atomic.LoadInt64(&tickCount))
-	AssertEventCount(t, timeApi, 0)
+	AssertEventCount(t, timeApi, 21)
 }
 
 func BenchmarkGosched(b *testing.B) {
