@@ -89,6 +89,15 @@ func TestFakeApiTickZeroReturnsNil(t *testing.T) {
 	})
 }
 
+func TestFakeTimeApiOptions(t *testing.T) {
+	timeapi := NewFake().
+		SetOptions(FakeOptions().WithTesting(t).WithFlushTime(4 * time.Millisecond)).
+		Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
+	timeapi.Stop()
+	assert.Equal(t, 4*time.Millisecond, timeapi.options.flushTime)
+	assert.Equal(t, t, timeapi.options.testingTB)
+}
+
 func TestFakeApi(t *testing.T) {
 	timeApi := NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
 

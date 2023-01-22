@@ -30,8 +30,8 @@ The expected use case:
 import "github.com/villenny/timeApi-go"
 
 // timeApi mirrors all the time calls
-time := timeApi.New()
-startTime := time.Now()
+timeapi := timeApi.New()
+startTime := timeapi.Now()
 ```
 
 
@@ -47,14 +47,14 @@ startTime := time.Now()
 import "github.com/villenny/timeApi-go"
 
 // initialize and start the timeApi
-time := timeApi.NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
+timeapi := timeApi.NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
 
 // advance the fake clock
-time.AdvanceClock(2 * time.Second)
+timeapi.AdvanceClock(2 * time.Second)
 
-time.Stop()
+timeapi.Stop()
 
-AssertEventCount(t, timeApi, 0)
+AssertEventCount(t, timeapi, 0)
 
 ```
 
@@ -102,7 +102,7 @@ AssertEventCount(t, timeApi, 0)
 - this will greatly help you track down what ran when after more complicated tests with many threads
 
 ```
-fakeTimeApi, ok := it.timeApi.(*FakeTimeApi)
+fakeTimeApi, ok := timeapi.(*FakeTimeApi)
 if ok {
     fakeTimeApi.AddEvent("    My Thingy Ran!")
 }
@@ -114,7 +114,7 @@ if ok {
 - conversely if you have a test that is slow due to all the background sleeping maybe you want to reduce flush time, or eliminate it
 
 ```
-time := timeApi.NewFake().
+timeapi := timeApi.NewFake().
     SetOptions(timeApi.FakeOptions().WithTesting(t).WithFlushTime(4 * time.Millisecond)).
     Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
 ```
@@ -129,17 +129,17 @@ Using the timerProvider
 
 ```
 // init time Api
-time := timeApi.New()
+timeapi := timeApi.New()
 
 // start my timer
-timerProvider, _ := NewTimerProvider(time)
+timerProvider, _ := NewTimerProvider(timeapi)
 var runCount int
 const CHECK_INTERVAL = 100 * time.Millisecond
 timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
 
 // this stops the timer cleanly, leaking nothing, plus has a lock internally, so you can assert anything it touched safely in tests
 // like the above runCount variable.
-timeApi_.Stop()
+timeapi.Stop()
 ```
 
 
