@@ -13,7 +13,7 @@
 Inspired by https://github.com/benbjohnson/clock it worked great for a while until my project had too many bg threads running.
 
 
-## Install
+# Install
 
 ```
 go get -u github.com/Villenny/timeApi-go
@@ -22,7 +22,7 @@ go get -u github.com/Villenny/timeApi-go
 
 
 
-## Using the Package
+# Using the Package
 
 The expected use case:
 - just the same as the system time library more or less
@@ -39,9 +39,9 @@ startTime := time.Now()
 
 
 
-## Using the test fake
+# Using the test fake
 
-# Using fakeTimeApi:
+## Using fakeTimeApi:
 - In general advancing the fake clock will cause sleeps after any timer event to allow bg threads to process, for a surprisingly long time too, since cloud build systems tend to be oversubscribed
 ```
 import "github.com/villenny/timeApi-go"
@@ -60,7 +60,7 @@ AssertEventCount(t, timeApi, 0)
 
 
 
-# Debugging with the fake time event log
+## Debugging with the fake time event log
 - One of the key features of the fake, is that it allows you to get the serialized list of timer events, including the ability to inject your own events, and then assert the count is what you expect.
 
 - In the event the assertion fails you will get something like this:
@@ -97,7 +97,7 @@ AssertEventCount(t, timeApi, 0)
             Test:           TestFakeApi
 ```
 
-# Injecting your own events
+## Injecting your own events
 - the fake time allows you to inject your own events into the time fakes event log, this will greatly help you track down what run when after more complicated tests with many threads
 
 ```
@@ -111,7 +111,7 @@ if ok {
 
 
 
-## Using the timerProvider convenience wrapper
+# Using the timerProvider convenience wrapper
 
 Using the timerProvider
 - this providers an easy way to start/stop a bg thread that calls a worker function, with race safety etc.
@@ -133,14 +133,14 @@ timeApi_.Stop()
 ```
 
 
-## Benchmark
+# Benchmark
 - Not really relevant to this module
 
 
-## Contact
+# Contact
 
 Ryan Haksi [ryan.haksi@gmail.com]
 
-## License
+# License
 
 Available under the MIT [License](/LICENSE).
