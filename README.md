@@ -25,23 +25,27 @@ go get -u github.com/Villenny/timeApi-go
 The expected use case:
 - just the same as the system time library more or less
 ```
-	import "github.com/villenny/timeApi-go"
+import "github.com/villenny/timeApi-go"
 
-    // timeApi mirrors all the time calls
-    time := timeApi.New()
-	startTime := time.Now()
+// timeApi mirrors all the time calls
+time := timeApi.New()
+startTime := time.Now()
 ```
 
 Using fakeTimeApi:
 - In general advancing the fake clock will cause sleeps after any timer event to allow bg threads to process, for a surprisingly long time too, since cloud build systems tend to be oversubscribed
 ```
-	import "github.com/villenny/timeApi-go"
+import "github.com/villenny/timeApi-go"
 
-    // initialize and start the timeApi
-	time := timeApi.NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
-	timeApi.Stop()
+// initialize and start the timeApi
+time := timeApi.NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
 
-	AssertEventCount(t, timeApi, 0)    
+// advance the fake clock
+time.AdvanceClock(2 * time.Second)
+
+time.Stop()
+
+AssertEventCount(t, timeApi, 0)
 
 ```
 
@@ -72,13 +76,13 @@ Using fakeTimeApi:
     c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:752:   18 0000000000000002 +Gosched: 60ns
     c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:752:   19 0000000000000002 -Gosched: 60ns
     c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:752:   20 0000000000000002 Leaked Tickproducer: tp/4/Tick/c:/dev/GitHub/Villenny/timeApi-go/fakeTimeApi_test.go:136 (Always leaks - dont use)
-    c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:755: 
-        	Error Trace:	c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:755
-        	            				c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi_test.go:169
-        	Error:      	Not equal: 
-        	            	expected: 0
-        	            	actual  : 21
-        	Test:       	TestFakeApi
+    c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:755:
+            Error Trace:    c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi.go:755
+                                        c:\dev\GitHub\Villenny\timeApi-go\fakeTimeApi_test.go:169
+            Error:          Not equal:
+                            expected: 0
+                            actual  : 21
+            Test:           TestFakeApi
 ```
 
 Using the timerProvider
@@ -86,18 +90,18 @@ Using the timerProvider
 - it also injects its update calls into the fake timer event log
 
 ```
-    // init time Api
-	time := timeApi.New()
+// init time Api
+time := timeApi.New()
 
-    // start my timer
-	timerProvider, _ := NewTimerProvider(time)
-	var runCount int
-	const CHECK_INTERVAL = 100 * time.Millisecond
-	timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
+// start my timer
+timerProvider, _ := NewTimerProvider(time)
+var runCount int
+const CHECK_INTERVAL = 100 * time.Millisecond
+timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
 
-    // this stops the timer cleanly, leaking nothing, plus has a lock internally, so you can assert anything it touched safely in tests
-    // like the above runCount variable.
-	timeApi_.Stop()
+// this stops the timer cleanly, leaking nothing, plus has a lock internally, so you can assert anything it touched safely in tests
+// like the above runCount variable.
+timeApi_.Stop()
 ```
 
 
