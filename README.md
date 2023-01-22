@@ -139,7 +139,7 @@ timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
 
 // this stops the timer cleanly, leaking nothing, plus has a lock internally, so you can assert anything it touched safely in tests
 // like the above runCount variable.
-timeapi.Stop()
+timer.Stop()
 ```
 
 
