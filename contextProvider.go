@@ -87,7 +87,7 @@ type Stringer interface {
 	String() string
 }
 
-func contextName(c context.Context) string {
+func ContextName(c context.Context) string {
 	if s, ok := c.(Stringer); ok {
 		return s.String()
 	}
@@ -95,7 +95,7 @@ func contextName(c context.Context) string {
 }
 
 func (c *timerCtx) String() string {
-	return contextName(c.parent) + ".WithDeadline(" +
+	return ContextName(c.parent) + ".WithDeadline(" +
 		c.deadline.String() + " [" +
 		time.Until(c.deadline).String() + "])"
 }
