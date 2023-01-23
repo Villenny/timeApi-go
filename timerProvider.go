@@ -20,7 +20,7 @@ func NewTimerProvider(timeApi TimeApi) (*TimerProvider, error) {
 type IntervalTimer struct {
 	done       chan bool
 	ticker     *Ticker
-	fn         func()
+	fn         func(tm time.Time)
 	mutex      *sync.Mutex
 	gotDone    bool
 	isRunning  bool
@@ -51,7 +51,7 @@ func wrapperFn(it *IntervalTimer) {
 			func() {
 				it.mutex.Lock()
 				defer it.mutex.Unlock()
-				it.fn()
+				it.fn(item)
 				it.count += 1
 			}()
 
@@ -73,7 +73,7 @@ func wrapperFn(it *IntervalTimer) {
 	}
 }
 
-func (t *TimerProvider) SetInterval(fn func(), interval time.Duration) *IntervalTimer {
+func (t *TimerProvider) SetInterval(fn func(tm time.Time), interval time.Duration) *IntervalTimer {
 	ticker := t.timeApi.Ticker(interval)
 	done := make(chan bool, 0)
 

@@ -15,7 +15,7 @@ func TestStartStopTimer(t *testing.T) {
 	timerProvider, _ := NewTimerProvider(timeapi)
 	var runCount int
 	const CHECK_INTERVAL = 100 * time.Millisecond
-	timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
+	timer := timerProvider.SetInterval(func(tm time.Time) { runCount += 1 }, CHECK_INTERVAL)
 	assert.Equal(t, 0, runCount)
 	assert.Equal(t, timer.Count(), runCount)
 
