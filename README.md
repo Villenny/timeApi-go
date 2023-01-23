@@ -148,8 +148,6 @@ assert.Equal(t, 0, len(events))
 
 tickProducerNames := timeapi.AppendTickProducerNames(make([]string, 0, 1024))
 assert.Equal(t, 0, len(tickProducerNames))
-
-
 ```
 
 
