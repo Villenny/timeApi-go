@@ -182,7 +182,7 @@ timerProvider, _ := NewTimerProvider(timeapi)
 var runCount int
 const CHECK_INTERVAL = 100 * time.Millisecond
 timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
-clock_.IncrementClock(CHECK_INTERVAL)
+timeapi.IncrementClock(CHECK_INTERVAL)
 timer.WaitUntilCount(1)
 
 assert.Equal(t, timer.Count(), runCount)
