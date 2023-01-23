@@ -83,12 +83,12 @@ func (c *timerCtx) Deadline() (deadline time.Time, ok bool) {
 	return c.deadline, true
 }
 
-type stringer interface {
+type Stringer interface {
 	String() string
 }
 
 func contextName(c context.Context) string {
-	if s, ok := c.(stringer); ok {
+	if s, ok := c.(Stringer); ok {
 		return s.String()
 	}
 	return reflect.TypeOf(c).String()

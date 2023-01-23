@@ -2,6 +2,7 @@ package timeApi
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,16 @@ func TestContextWithDeadline(t *testing.T) {
 				plus5Minutes)
 
 			assert.Equal(t, "bar", ctx.Value("foo"))
+		})
+	})
+
+	t.Run("implements stringer", func(t *testing.T) {
+		_ = WithFakeTime(startTime, func(timeapi *FakeTimeApi) {
+			ctx, _ := timeapi.WithDeadline(context.Background(), plus5Minutes)
+
+			stringer, ok := ctx.(Stringer)
+			assert.True(t, ok)
+			assert.True(t, strings.Contains(stringer.String(), "WithDeadline"))
 		})
 	})
 
