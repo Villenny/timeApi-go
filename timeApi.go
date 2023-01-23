@@ -1,6 +1,7 @@
 package timeApi
 
 import (
+	"context"
 	"runtime"
 	"strconv"
 	"strings"
@@ -76,8 +77,8 @@ type TimeApi interface {
 	Tick(d time.Duration) <-chan time.Time
 	Ticker(d time.Duration) *Ticker
 	Timer(d time.Duration) *Timer
-	//WithDeadline(parent context.Context, d time.Time) (context.Context, context.CancelFunc)
-	//WithTimeout(parent context.Context, t time.Duration) (context.Context, context.CancelFunc)
+	WithDeadline(parent context.Context, d time.Time) (context.Context, context.CancelFunc)
+	WithTimeout(parent context.Context, t time.Duration) (context.Context, context.CancelFunc)
 }
 
 // ///////////////////////////////////////////////////////////////////
@@ -116,14 +117,12 @@ func (t *RealTimeApi) Timer(d time.Duration) *Timer {
 	return &Timer{i.C, i, "Timer/" + strconv.Itoa(int(id)) + "/" + getInterestingCaller()}
 }
 
-/*
-func (t *RealTimeApi) WithDeadline(ctx context.Context, d time.Time) (context.Context, context.CancelFunc) {
-	return context.WithDeadline(parent, d)
+func (t *RealTimeApi) WithDeadline(ctx context.Context, tm time.Time) (context.Context, context.CancelFunc) {
+	return context.WithDeadline(ctx, tm)
 }
-func (t *RealTimeApi) WithTimeout(ctx context.Context, t time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, t)
+func (t *RealTimeApi) WithTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, d)
 }
-*/
 
 // ///////////////////////////////////////////////////////////////////
 

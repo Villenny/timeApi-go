@@ -1,6 +1,7 @@
 package timeApi
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"strconv"
@@ -371,6 +372,13 @@ func (t *FakeTimeApi) Timer(d time.Duration) *Timer {
 	return &Timer{i.C, i, i.name}
 }
 
+func (t *FakeTimeApi) WithDeadline(ctx context.Context, tm time.Time) (context.Context, context.CancelFunc) {
+	return WithDeadline(ctx, t, tm)
+}
+func (t *FakeTimeApi) WithTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
+	return WithTimeout(ctx, t, d)
+}
+
 func (t *FakeTimeApi) TickProducerCount() int {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -596,6 +604,40 @@ func (t *FakeTimeApi) newTimer(d time.Duration, fn func(), typeName string) *Fak
 	return fake
 }
 
+// Stop prevents the Timer from firing.
+// It returns true if the call stops the timer, false if the timer has already
+// expired or been stopped.
+// Stop does not close the channel, to prevent a read from the channel succeeding
+// incorrectly.
+//
+// To ensure the channel is empty after a call to Stop, check the
+// return value and drain the channel.
+// For example, assuming the program has not received from t.C already:
+//
+//	if !t.Stop() {
+//		<-t.C
+//	}
+//
+// This cannot be done concurrent to other receives from the Timer's
+// channel or other calls to the Timer's Stop method.
+//
+// For a timer created with AfterFunc(d, f), if t.Stop returns false, then the timer
+// has already expired and the function f has been started in its own goroutine;
+// Stop does not wait for f to complete before returning.
+// If the caller needs to know whether f is completed, it must coordinate
+// with f explicitly.
+func (t *FakeTimer) Stop() bool {
+	t.fakeTimeApi.mutex.Lock()
+	defer t.fakeTimeApi.mutex.Unlock()
+
+	isStopped := t.isStopped
+	isDrained := len(t.c) == 0
+	t.isStopped = true
+
+	t.fakeTimeApi.events = append(t.fakeTimeApi.events, fmt.Sprintf("%016d Stop %v isDrained=%v isStopped=%v", t.fakeTimeApi.now.Sub(t.fakeTimeApi.startTime)/time.Millisecond, t.name, isDrained, isStopped))
+	return isDrained
+}
+
 // Reset changes the timer to expire after duration d.
 // It returns true if the timer had been active, false if the timer had
 // expired or been stopped.
@@ -609,10 +651,10 @@ func (t *FakeTimeApi) newTimer(d time.Duration, fn func(), typeName string) *Fak
 // the timer must be stopped and—if Stop reports that the timer expired
 // before being stopped—the channel explicitly drained:
 //
-//    if !t.Stop() {
-//        <-t.C
-//    }
-//    t.Reset(d)
+//	if !t.Stop() {
+//	    <-t.C
+//	}
+//	t.Reset(d)
 //
 // This should not be done concurrent to other receives from the Timer's
 // channel.
@@ -630,22 +672,6 @@ func (t *FakeTimeApi) newTimer(d time.Duration, fn func(), typeName string) *Fak
 // goroutine running f does not run concurrently with the prior
 // one. If the caller needs to know whether the prior execution of
 // f is completed, it must coordinate with f explicitly.
-
-func (t *FakeTimer) Stop() bool {
-	t.fakeTimeApi.mutex.Lock()
-	defer t.fakeTimeApi.mutex.Unlock()
-
-	if t.isStopped {
-		panic("Just stopped a timer thats already stopped")
-	}
-
-	t.isStopped = true
-	isDrained := len(t.c) == 0
-
-	t.fakeTimeApi.events = append(t.fakeTimeApi.events, fmt.Sprintf("%016d Stop %v isDrained=%v", t.fakeTimeApi.now.Sub(t.fakeTimeApi.startTime)/time.Millisecond, t.name, isDrained))
-	return isDrained
-}
-
 func (t *FakeTimer) Reset(d Duration) bool {
 	t.fakeTimeApi.mutex.Lock()
 	defer t.fakeTimeApi.mutex.Unlock()
