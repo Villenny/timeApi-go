@@ -128,6 +128,7 @@ func (t *RealTimeApi) WithTimeout(ctx context.Context, d time.Duration) (context
 
 var boringFiles []string = []string{
 	"timerProvider.go",
+	"contextProvider.go",
 }
 
 func getInterestingCaller() string {
