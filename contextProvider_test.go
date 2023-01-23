@@ -71,6 +71,24 @@ func TestContextWithDeadline(t *testing.T) {
 		})
 	})
 
+	t.Run("can be canceled, just the once", func(t *testing.T) {
+		// Test Fake
+		_ = WithFakeTime(startTime, func(timeapi *FakeTimeApi) {
+			plus5Minutes := startTime.Add(5 * time.Minute)
+
+			ctx, cancel := timeapi.WithDeadline(context.Background(), plus5Minutes)
+			assert.NotNil(t, ctx.Done())
+			assert.Nil(t, ctx.Err())
+
+			cancel()
+			assert.Equal(t, context.Canceled, ctx.Err())
+			<-ctx.Done()
+			cancel()
+			assert.Equal(t, context.Canceled, ctx.Err())
+
+		})
+	})
+
 }
 
 func TestContextWithTimeout(t *testing.T) {
