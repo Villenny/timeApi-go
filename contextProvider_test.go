@@ -36,7 +36,7 @@ func TestContextWithDeadline(t *testing.T) {
 		_ = WithFakeTime(startTime, func(timeapi *FakeTimeApi) {
 			ctx, _ := timeapi.WithDeadline(context.Background(), plus5Minutes)
 
-			stringer, ok := ctx.(Stringer)
+			stringer, ok := ctx.(stringer)
 			assert.True(t, ok)
 			assert.True(t, strings.Contains(stringer.String(), "WithDeadline"))
 		})

@@ -66,7 +66,7 @@ func TestFakeApiAfterFuncAndAfterAndTimer(t *testing.T) {
 			<-afterC
 			atomic.AddInt64(&tickCount, 1)
 		}()
-		timer3 := timeApi.Timer(30 * time.Hour)
+		timer3 := timeApi.NewTimer(30 * time.Hour)
 		go func() {
 			// this executes on another thread
 			<-timer3.C
@@ -127,14 +127,14 @@ func TestFakeApi(t *testing.T) {
 		atomic.AddInt64(&tickCount, 1)
 	}()
 
-	timer3 := timeapi.Timer(2 * time.Millisecond)
+	timer3 := timeapi.NewTimer(2 * time.Millisecond)
 	go func() {
 		// this executes on another thread
 		<-timer3.C
 		atomic.AddInt64(&tickCount, 1)
 	}()
 
-	ticker := timeapi.Ticker(1 * time.Hour)
+	ticker := timeapi.NewTicker(1 * time.Hour)
 	go func() {
 		// this executes on another thread
 		<-ticker.C

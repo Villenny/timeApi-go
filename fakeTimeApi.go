@@ -369,21 +369,21 @@ func (t *FakeTimeApi) Tick(d time.Duration) <-chan time.Time {
 	return t.newTicker(d, "Tick/"+t.getInterestingCaller()+" (Always leaks - dont use)").C
 }
 
-func (t *FakeTimeApi) Ticker(d time.Duration) *Ticker {
+func (t *FakeTimeApi) NewTicker(d time.Duration) *Ticker {
 	i := t.newTicker(d, "Ticker/"+t.getInterestingCaller())
 	return &Ticker{i.C, i, i.name}
 }
 
-func (t *FakeTimeApi) Timer(d time.Duration) *Timer {
+func (t *FakeTimeApi) NewTimer(d time.Duration) *Timer {
 	i := t.newTimer(d, nil, "Timer/"+t.getInterestingCaller())
 	return &Timer{i.C, i, i.name}
 }
 
 func (t *FakeTimeApi) WithDeadline(ctx context.Context, tm time.Time) (context.Context, context.CancelFunc) {
-	return WithDeadline(ctx, t, tm)
+	return withDeadline(ctx, t, tm)
 }
 func (t *FakeTimeApi) WithTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
-	return WithTimeout(ctx, t, d)
+	return withTimeout(ctx, t, d)
 }
 
 func (t *FakeTimeApi) TickProducerCount() int {

@@ -74,7 +74,7 @@ func wrapperFn(it *IntervalTimer) {
 }
 
 func (t *TimerProvider) SetInterval(fn func(tm time.Time), interval time.Duration) *IntervalTimer {
-	ticker := t.timeApi.Ticker(interval)
+	ticker := t.timeApi.NewTicker(interval)
 	done := make(chan bool, 0)
 
 	intervalTimer := &IntervalTimer{

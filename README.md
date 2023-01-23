@@ -45,8 +45,8 @@ type TimeApi interface {
 	Sleep(d time.Duration)
 	Gosched()
 	Tick(d time.Duration) <-chan time.Time
-	Ticker(d time.Duration) *Ticker
-	Timer(d time.Duration) *Timer
+	NewTicker(d time.Duration) *Ticker
+	NewTimer(d time.Duration) *Timer
 	WithDeadline(parent context.Context, d time.Time) (context.Context, context.CancelFunc)
 	WithTimeout(parent context.Context, t time.Duration) (context.Context, context.CancelFunc)
 }
