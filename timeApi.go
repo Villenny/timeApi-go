@@ -88,6 +88,7 @@ type TimeApi interface {
 
 // ///////////////////////////////////////////////////////////////////
 
+// The real time api struct, wraps the system time/context/goshed functions
 type RealTimeApi struct {
 	nextId int64
 }

@@ -187,6 +187,15 @@ func TestFakeApi(t *testing.T) {
 	assert.True(t, strings.HasSuffix(tickProducerNames[0], "(Always leaks - dont use)"))
 }
 
+func TestDurationString(t *testing.T) {
+	assert.Equal(t, "2h", DurationString(2*time.Hour))
+	assert.Equal(t, "2m", DurationString(2*time.Minute))
+	assert.Equal(t, "2s", DurationString(2*time.Second))
+	assert.Equal(t, "2ms", DurationString(2*time.Millisecond))
+	assert.Equal(t, "2us", DurationString(2*time.Microsecond))
+	assert.Equal(t, "2ns", DurationString(2*time.Nanosecond))
+}
+
 func BenchmarkGosched(b *testing.B) {
 	// var amountToSleep time.Duration
 	for i := 0; i < b.N; i++ {

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// fake time api options
 type fakeOptions struct {
 	testingTB testing.TB
 	flushTime time.Duration
@@ -26,11 +27,15 @@ func FakeOptions() fakeOptions {
 	}
 }
 
+// pass the testing or benchmark context, so that it can be used for logging in the event the fake panics
 func (t fakeOptions) WithTesting(tb testing.TB) fakeOptions {
 	t.testingTB = tb
 	return t
 }
 
+// pass the testing or benchmark context, so that it can be used for logging in the event the fake panics
+// on heavily loaded shared tenancy cloud build environments I've seen in excess of 15ms for sleep(1ms)
+// this makes sleeping until all bg threads reactivate and finish their queues tricky.
 func (t fakeOptions) WithFlushTime(d time.Duration) fakeOptions {
 	t.flushTime = d
 	return t
@@ -38,13 +43,15 @@ func (t fakeOptions) WithFlushTime(d time.Duration) fakeOptions {
 
 // ///////////////////////////////////////////////////////////////////
 
-type TickProducer interface {
-	GetNextEventTimeUnsafe() time.Time
-	DoTick(d time.Duration)
-	IsAliveUnsafe() bool
-	GetNameUnsafe() string
+// anything that produces time events is a tick producer
+type tickProducer interface {
+	getNextEventTimeUnsafe() time.Time
+	doTick(d time.Duration)
+	isAliveUnsafe() bool
+	getNameUnsafe() string
 }
 
+// the fake time api struct
 type FakeTimeApi struct {
 	options          fakeOptions
 	mutex            *sync.Mutex
@@ -53,7 +60,7 @@ type FakeTimeApi struct {
 	now              time.Time
 	isStopped        bool
 	isAdvancingClock bool
-	tickProducers    []TickProducer
+	tickProducers    []tickProducer
 	nextId           int
 }
 
@@ -62,7 +69,7 @@ func reapEndedTickProducers(it *FakeTimeApi) {
 	it.mutex.Lock()
 	defer it.mutex.Unlock()
 	for i := 0; i < len(it.tickProducers); {
-		if it.tickProducers[i].IsAliveUnsafe() {
+		if it.tickProducers[i].isAliveUnsafe() {
 			i += 1
 			continue
 		}
@@ -79,9 +86,9 @@ func advanceNowAndRunTickProducers(it *FakeTimeApi, d time.Duration) {
 	finalTime := currentTime.Add(d)
 	tickCount := 0
 	tickedSomething := true
-	ticked := make([]TickProducer, 0, 32)
+	ticked := make([]tickProducer, 0, 32)
 	for tickedSomething {
-		var itemToTick TickProducer
+		var itemToTick tickProducer
 		minEventTime := finalTime
 		tickedSomething = false
 		var elapsedTime time.Duration
@@ -92,10 +99,10 @@ func advanceNowAndRunTickProducers(it *FakeTimeApi, d time.Duration) {
 
 			// for each running timer, find the next event time, advance that timer to that event time
 			for _, item := range it.tickProducers {
-				if !item.IsAliveUnsafe() {
+				if !item.isAliveUnsafe() {
 					continue
 				}
-				eventTime := item.GetNextEventTimeUnsafe()
+				eventTime := item.getNextEventTimeUnsafe()
 				if eventTime.After(minEventTime) {
 					continue
 				}
@@ -107,14 +114,14 @@ func advanceNowAndRunTickProducers(it *FakeTimeApi, d time.Duration) {
 			it.now = it.now.Add(elapsedTime)
 			if itemToTick != nil {
 				ticked = append(ticked, itemToTick)
-				it.events = append(it.events, fmt.Sprintf("%016d | DoTick: %v - %v", it.now.Sub(it.startTime)/time.Millisecond, itemToTick.GetNameUnsafe(), DurationString(elapsedTime)))
+				it.events = append(it.events, fmt.Sprintf("%016d | doTick: %v - %v", it.now.Sub(it.startTime)/time.Millisecond, itemToTick.getNameUnsafe(), DurationString(elapsedTime)))
 			}
 		}()
 
 		// tick the item but give up the lock first, so it can get it, and release it as necessary to drive bg threads listening to timers
 		if itemToTick != nil {
 			tickedSomething = true
-			itemToTick.DoTick(elapsedTime)
+			itemToTick.doTick(elapsedTime)
 			tickCount += 1
 		}
 		currentTime = currentTime.Add(elapsedTime)
@@ -140,8 +147,7 @@ func (t *FakeTimeApi) getInterestingCaller() string {
 	}
 }
 
-// New returns an instance of a real-time clock.
-// Optionally you can have a bg thread to advance the clock 1ms every 500ms or something so time is always passing at least a little
+// NewFake returns test fake so your tests can control the when and how much time advances
 func NewFake(opts ...fakeOptions) *FakeTimeApi {
 	o := FakeOptions()
 	if len(opts) > 1 {
@@ -159,6 +165,7 @@ func NewFake(opts ...fakeOptions) *FakeTimeApi {
 	return fake
 }
 
+// if you reuse your fake across many tests, sometimses you need to change the options
 func (t *FakeTimeApi) SetOptions(opts fakeOptions) *FakeTimeApi {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -170,6 +177,7 @@ func (t *FakeTimeApi) SetOptions(opts fakeOptions) *FakeTimeApi {
 	return t
 }
 
+// uses start/stop pattern so it can track resource leaks
 func (t *FakeTimeApi) Start(tm time.Time) *FakeTimeApi {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -190,6 +198,7 @@ func (t *FakeTimeApi) Start(tm time.Time) *FakeTimeApi {
 	return t
 }
 
+// stops the timer,
 func (t *FakeTimeApi) Stop() *FakeTimeApi {
 	t.flush() // given some time to any background threads to let them get caught up
 
@@ -202,7 +211,11 @@ func (t *FakeTimeApi) Stop() *FakeTimeApi {
 	// unfortunately using the Tick() function leaks a tick producer by design so we cant panic on every leak
 	importantLeak := false
 	for _, i := range t.tickProducers {
-		t.events = append(t.events, fmt.Sprintf("%016d Leaked Tickproducer: %v", t.now.Sub(t.startTime)/time.Millisecond, i.GetNameUnsafe()))
+		name := i.getNameUnsafe()
+		t.events = append(t.events, fmt.Sprintf("%016d Leaked Tickproducer: %v", t.now.Sub(t.startTime)/time.Millisecond, name))
+		if strings.Contains(name, "Leak") == false {
+			importantLeak = true
+		}
 	}
 
 	if importantLeak {
@@ -212,6 +225,7 @@ func (t *FakeTimeApi) Stop() *FakeTimeApi {
 	return t
 }
 
+// convenience wrapper to generate a fake and start it
 func WithFakeTime(startTime time.Time, fn func(timeApi *FakeTimeApi)) *FakeTimeApi {
 	timeapi := NewFake().Start(startTime)
 	fn(timeapi)
@@ -219,6 +233,13 @@ func WithFakeTime(startTime time.Time, fn func(timeApi *FakeTimeApi)) *FakeTimeA
 	return timeapi
 }
 
+// add a user event to the fakes time event log
+// Use like:
+//
+//	 fakeTimeApi, ok := timeapi.(*FakeTimeApi)
+//		if ok {
+//		    fakeTimeApi.AddEvent("    My Thingy Ran!")
+//		}
 func (t *FakeTimeApi) AddEvent(event string) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -295,6 +316,7 @@ func (t *FakeTimeApi) flush() {
 	time.Sleep(t.options.flushTime) // given some time to any background threads to let them get caught up
 }
 
+// Make time pass
 func (t *FakeTimeApi) IncrementClock(d time.Duration) *FakeTimeApi {
 	t.incrementClock(d, "IncrementClock")
 	return t
@@ -350,6 +372,8 @@ func (t *FakeTimeApi) Sleep(d time.Duration) {
 	return
 }
 
+// gosched typically takes about 45-60ns to run on my machine, but sometimes 0ns presumably depending on core task queue size
+// as a guess, the fake advances the clock 60ns when you call its fake version. This does not cause a sleep, only a call to gosched
 func (t *FakeTimeApi) Gosched() {
 	//realNow := time.Now()
 	runtime.Gosched() // gosched typically takes about 45-60ns to run on my machine, but sometimes 0ns presumably depending on core task queue size
@@ -382,25 +406,31 @@ func (t *FakeTimeApi) NewTimer(d time.Duration) *Timer {
 func (t *FakeTimeApi) WithDeadline(ctx context.Context, tm time.Time) (context.Context, context.CancelFunc) {
 	return withDeadline(ctx, t, tm)
 }
+
 func (t *FakeTimeApi) WithTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
 	return withTimeout(ctx, t, d)
 }
 
+// Get the count of active tick producers.
+// Inactive tick producers are only reaped whenever you advance or stop the clock
 func (t *FakeTimeApi) TickProducerCount() int {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	return len(t.tickProducers)
 }
 
+// Get list of names for active tick producers
+// Inactive tick producers are only reaped whenever you advance or stop the clock
 func (t *FakeTimeApi) AppendTickProducerNames(names []string) []string {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	for _, i := range t.tickProducers {
-		names = append(names, i.GetNameUnsafe())
+		names = append(names, i.getNameUnsafe())
 	}
 	return names
 }
 
+// a copy of the timeapi's event log
 func (t *FakeTimeApi) AppendEvents(events []string) []string {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -421,6 +451,7 @@ func (t *FakeTimeApi) logEventsToTestingUnsafe() {
 
 // ///////////////////////////////////////////////////////////////////
 
+// fake time api implementation of ticker
 type FakeTicker struct {
 	fakeTimeApi *FakeTimeApi
 	name        string
@@ -432,6 +463,12 @@ type FakeTicker struct {
 	isStopped   bool
 }
 
+// NewTicker returns a new Ticker containing a channel that will send
+// the current time on the channel after each tick. The period of the
+// ticks is specified by the duration argument. The ticker will adjust
+// the time interval or drop ticks to make up for slow receivers.
+// The duration d must be greater than zero; if not, NewTicker will
+// panic. Stop the ticker to release associated resources.
 func (t *FakeTimeApi) newTicker(d time.Duration, typeName string) *FakeTicker {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -458,17 +495,9 @@ func (t *FakeTimeApi) newTicker(d time.Duration, typeName string) *FakeTicker {
 	return fake
 }
 
-// NewTicker returns a new Ticker containing a channel that will send
-// the current time on the channel after each tick. The period of the
-// ticks is specified by the duration argument. The ticker will adjust
-// the time interval or drop ticks to make up for slow receivers.
-// The duration d must be greater than zero; if not, NewTicker will
-// panic. Stop the ticker to release associated resources.
-
 // Stop turns off a ticker. After Stop, no more ticks will be sent.
 // Stop does not close the channel, to prevent a concurrent goroutine
 // reading from the channel from seeing an erroneous "tick".
-
 func (t *FakeTicker) Stop() {
 	alreadyStopped := false
 	func() {
@@ -524,7 +553,7 @@ func (t *FakeTicker) Reset(d Duration) {
 	t.fakeTimeApi.events = append(t.fakeTimeApi.events, fmt.Sprintf("%016d Reset %v %v", t.fakeTimeApi.now.Sub(t.fakeTimeApi.startTime)/time.Millisecond, t.name, DurationString(d)))
 }
 
-func (t *FakeTicker) GetNextEventTimeUnsafe() time.Time {
+func (t *FakeTicker) getNextEventTimeUnsafe() time.Time {
 	if t.isStopped {
 		return MaxTime
 	}
@@ -533,7 +562,7 @@ func (t *FakeTicker) GetNextEventTimeUnsafe() time.Time {
 	return t.when.Add(time.Duration(nextTickCount) * t.d)
 }
 
-func (t *FakeTicker) DoTick(d time.Duration) {
+func (t *FakeTicker) doTick(d time.Duration) {
 	// wait for channel to drain
 	i := 0
 	iMax := 10
@@ -568,7 +597,7 @@ func (t *FakeTicker) DoTick(d time.Duration) {
 	time.Sleep(t.fakeTimeApi.options.flushTime)
 }
 
-func (t *FakeTicker) IsAliveUnsafe() bool {
+func (t *FakeTicker) isAliveUnsafe() bool {
 	// this is problematic, because it cant be accessed while the timer lock is held else we can have deadlocks
 	if len(t.C) > 0 {
 		return true
@@ -576,18 +605,19 @@ func (t *FakeTicker) IsAliveUnsafe() bool {
 	return t.isStopped == false
 }
 
-func (t *FakeTicker) GetNameUnsafe() string {
+func (t *FakeTicker) getNameUnsafe() string {
 	return t.name
 }
 
 // ///////////////////////////////////////////////////////////////////
 
+// fake time api implementation of timer
 type FakeTimer struct {
 	fakeTimeApi *FakeTimeApi
 	name        string
 	when        time.Time
 	d           time.Duration
-	C           <-chan Time // The channel on which the ticks are delivered.
+	C           <-chan Time // The channel on which the ticks are delivered. Public readonly alias
 	c           chan Time   // The channel on which the ticks are delivered.
 	fn          func()
 	gotTick     bool
@@ -711,14 +741,14 @@ func (t *FakeTimer) Reset(d Duration) bool {
 	return gotTick
 }
 
-func (t *FakeTimer) GetNextEventTimeUnsafe() time.Time {
+func (t *FakeTimer) getNextEventTimeUnsafe() time.Time {
 	if t.isStopped {
 		return MaxTime
 	}
 	return t.when.Add(t.d)
 }
 
-func (t *FakeTimer) DoTick(d time.Duration) {
+func (t *FakeTimer) doTick(d time.Duration) {
 	// wait for channel to drain
 	i := 0
 	iMax := 10
@@ -758,19 +788,21 @@ func (t *FakeTimer) DoTick(d time.Duration) {
 	}
 }
 
-func (t *FakeTimer) IsAliveUnsafe() bool {
+func (t *FakeTimer) isAliveUnsafe() bool {
 	if len(t.C) > 0 {
 		return true
 	}
 	return t.isStopped == false
 }
 
-func (t *FakeTimer) GetNameUnsafe() string {
+func (t *FakeTimer) getNameUnsafe() string {
 	return t.name
 }
 
 // ///////////////////////////////////////////////////////////////////
 
+// convert time durations into something easier to read
+// 2h, 2m, 2s, 2ms, 2us, or 2ns for example
 func DurationString(d time.Duration) string {
 	if d >= 2*time.Hour {
 		return fmt.Sprintf("%vh", float64(d)/float64(time.Hour))
@@ -790,6 +822,8 @@ func DurationString(d time.Duration) string {
 	return fmt.Sprintf("%vns", float64(d)/float64(time.Nanosecond))
 }
 
+// assert the time event log is the size you expect, else spam the test output
+// with the event log.
 func AssertEventCount(tb testing.TB, timeApi *FakeTimeApi, count int) {
 	events := timeApi.AppendEvents(make([]string, 0, 1024))
 	if len(events) != count {
