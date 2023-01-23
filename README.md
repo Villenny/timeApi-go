@@ -34,7 +34,22 @@ timeapi := timeApi.New()
 startTime := timeapi.Now()
 ```
 
-
+- The interface for reference
+```
+type TimeApi interface {
+	After(d time.Duration) <-chan time.Time
+	AfterFunc(d time.Duration, f func()) *Timer
+	Now() time.Time
+	Since(t time.Time) time.Duration
+	Until(t time.Time) time.Duration
+	Sleep(d time.Duration)
+	Gosched()
+	Tick(d time.Duration) <-chan time.Time
+	Ticker(d time.Duration) *Ticker
+	Timer(d time.Duration) *Timer
+	WithDeadline(parent context.Context, d time.Time) (context.Context, context.CancelFunc)
+	WithTimeout(parent context.Context, t time.Duration) (context.Context, context.CancelFunc)
+}```
 
 
 
