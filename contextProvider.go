@@ -15,10 +15,6 @@ func WithTimeout(parent context.Context, timeapi TimeApi, timeout time.Duration)
 	return WithDeadline(parent, timeapi, timeapi.Now().Add(timeout))
 }
 
-func WithValue(parent context.Context, key, val any) context.Context {
-	return context.WithValue(parent, key, val)
-}
-
 // ////////////////////////////////////////////////////////////////////////////////////////////
 
 // WithDeadline returns a copy of the parent context with the deadline adjusted
