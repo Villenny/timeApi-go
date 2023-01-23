@@ -191,7 +191,7 @@ func (t *FakeTimeApi) Start(tm time.Time) *FakeTimeApi {
 }
 
 func (t *FakeTimeApi) Stop() *FakeTimeApi {
-	time.Sleep(t.options.flushTime)
+	t.flush() // given some time to any background threads to let them get caught up
 
 	reapEndedTickProducers(t)
 
@@ -213,10 +213,10 @@ func (t *FakeTimeApi) Stop() *FakeTimeApi {
 }
 
 func WithFakeTime(startTime time.Time, fn func(timeApi *FakeTimeApi)) *FakeTimeApi {
-	fakeTimeApi := NewFake().Start(startTime)
-	fn(fakeTimeApi)
-	fakeTimeApi.Stop()
-	return fakeTimeApi
+	timeapi := NewFake().Start(startTime)
+	fn(timeapi)
+	timeapi.Stop()
+	return timeapi
 }
 
 func (t *FakeTimeApi) AddEvent(event string) {
@@ -283,9 +283,16 @@ func (t *FakeTimeApi) incrementClock(d time.Duration, eventName string) *FakeTim
 
 	// If this is emulating gosched we dont want to sleep, although we cant guarantee we didnt above as part of synchronization around advancing the clock, assuming the gosched did that:
 	if eventName != "Gosched" {
-		time.Sleep(t.options.flushTime) // given some time to any background threads to let them get caught up
+		t.flush() // given some time to any background threads to let them get caught up
 	}
 	return t
+}
+
+func (t *FakeTimeApi) flush() {
+	if t.options.flushTime == 0 {
+		return
+	}
+	time.Sleep(t.options.flushTime) // given some time to any background threads to let them get caught up
 }
 
 func (t *FakeTimeApi) IncrementClock(d time.Duration) *FakeTimeApi {
@@ -383,6 +390,15 @@ func (t *FakeTimeApi) TickProducerCount() int {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	return len(t.tickProducers)
+}
+
+func (t *FakeTimeApi) AppendTickProducerNames(names []string) []string {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	for _, i := range t.tickProducers {
+		names = append(names, i.GetNameUnsafe())
+	}
+	return names
 }
 
 func (t *FakeTimeApi) AppendEvents(events []string) []string {

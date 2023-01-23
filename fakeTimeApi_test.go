@@ -2,6 +2,7 @@ package timeApi
 
 import (
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -26,28 +27,28 @@ func TestUselessHelpersFake(t *testing.T) {
 func TestFakeApiStartStopTimer(t *testing.T) {
 	now := time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC)
 	then := now.Add(1 * time.Second)
-	timeApi := WithFakeTime(now, func(timeApi *FakeTimeApi) {
+	timeapi := WithFakeTime(now, func(timeApi *FakeTimeApi) {
 		assert.Equal(t, 0, timeApi.TickProducerCount())
 		assert.Equal(t, now, timeApi.Now())
 		timeApi.IncrementClock(1 * time.Second)
 	})
-	assert.Equal(t, then, timeApi.Now())
-	assert.True(t, timeApi.isStopped)
-	AssertEventCount(t, timeApi, 1)
+	assert.Equal(t, then, timeapi.Now())
+	assert.True(t, timeapi.isStopped)
+	AssertEventCount(t, timeapi, 1)
 
 	// make sure we can start time api a second time
-	timeApi.Start(now)
-	timeApi.Stop()
-	assert.Equal(t, now, timeApi.Now())
-	assert.True(t, timeApi.isStopped)
-	AssertEventCount(t, timeApi, 0)
+	timeapi.Start(now)
+	timeapi.Stop()
+	assert.Equal(t, now, timeapi.Now())
+	assert.True(t, timeapi.isStopped)
+	AssertEventCount(t, timeapi, 0)
 }
 
 func TestFakeApiAfterFuncAndAfterAndTimer(t *testing.T) {
 	now := time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC)
 	var tickCount int64
 	atomic.StoreInt64(&tickCount, 0)
-	timeApi := WithFakeTime(now, func(timeApi *FakeTimeApi) {
+	timeapi := WithFakeTime(now, func(timeApi *FakeTimeApi) {
 		timer := timeApi.AfterFunc(1*time.Hour, func() {
 			// this executes on another thread
 			atomic.AddInt64(&tickCount, 1)
@@ -77,10 +78,10 @@ func TestFakeApiAfterFuncAndAfterAndTimer(t *testing.T) {
 		timeApi.Sleep(1 * time.Hour)
 		assert.Equal(t, now.Add(30*time.Hour), timeApi.Now())
 	})
-	AssertEventCount(t, timeApi, 12)
+	AssertEventCount(t, timeapi, 12)
 
 	assert.Equal(t, int64(3), atomic.LoadInt64(&tickCount))
-	assert.True(t, timeApi.isStopped)
+	assert.True(t, timeapi.isStopped)
 }
 
 func TestFakeApiTickZeroReturnsNil(t *testing.T) {
@@ -99,9 +100,9 @@ func TestFakeTimeApiOptions(t *testing.T) {
 }
 
 func TestFakeApi(t *testing.T) {
-	timeApi := NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
+	timeapi := NewFake().Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
 
-	var itMatchesInterface TimeApi = timeApi
+	var itMatchesInterface TimeApi = timeapi
 	assert.NotNil(t, itMatchesInterface)
 
 	var tickCount int64
@@ -109,7 +110,7 @@ func TestFakeApi(t *testing.T) {
 	var didCheck int64
 	atomic.StoreInt64(&didCheck, 0)
 
-	timerAfterFunc := timeApi.AfterFunc(1*time.Hour, func() {
+	timerAfterFunc := timeapi.AfterFunc(1*time.Hour, func() {
 		// this executes on another thread
 		atomic.AddInt64(&tickCount, 1)
 	})
@@ -119,21 +120,21 @@ func TestFakeApi(t *testing.T) {
 	assert.Equal(t, int64(0), atomic.LoadInt64(&tickCount))
 	timerAfterFunc.Reset(2 * time.Millisecond)
 
-	afterC := timeApi.After(2 * time.Millisecond)
+	afterC := timeapi.After(2 * time.Millisecond)
 	go func() {
 		// this executes on another thread
 		<-afterC
 		atomic.AddInt64(&tickCount, 1)
 	}()
 
-	timer3 := timeApi.Timer(2 * time.Millisecond)
+	timer3 := timeapi.Timer(2 * time.Millisecond)
 	go func() {
 		// this executes on another thread
 		<-timer3.C
 		atomic.AddInt64(&tickCount, 1)
 	}()
 
-	ticker := timeApi.Ticker(1 * time.Hour)
+	ticker := timeapi.Ticker(1 * time.Hour)
 	go func() {
 		// this executes on another thread
 		<-ticker.C
@@ -142,7 +143,7 @@ func TestFakeApi(t *testing.T) {
 	ticker.Stop()
 	ticker.Reset(2 * time.Millisecond)
 
-	tickC := timeApi.Tick(2 * time.Millisecond)
+	tickC := timeapi.Tick(2 * time.Millisecond)
 	go func() {
 		// this executes on another thread
 		<-tickC
@@ -152,10 +153,10 @@ func TestFakeApi(t *testing.T) {
 
 	expectedCount := int64(5)
 
-	beforeSleepTime := timeApi.Now()
+	beforeSleepTime := timeapi.Now()
 	assert.Equal(t, int64(0), atomic.LoadInt64(&tickCount))
-	timeApi.Sleep(2 * time.Millisecond)
-	afterSleepTime := timeApi.Now()
+	timeapi.Sleep(2 * time.Millisecond)
+	afterSleepTime := timeapi.Now()
 	elapsedSleep := afterSleepTime.Sub(beforeSleepTime)
 	assert.GreaterOrEqual(t, elapsedSleep, 2*time.Millisecond)
 	ticker.Stop()
@@ -163,19 +164,27 @@ func TestFakeApi(t *testing.T) {
 	// this might be problematic, this is a race condition, theres no guarantee all the other threads have successfully incremented yet
 	assert.Equal(t, expectedCount, atomic.LoadInt64(&tickCount))
 
-	beforeGoschedTime := timeApi.Now()
-	timeApi.Gosched()
-	afterGoschedTime := timeApi.Now()
+	beforeGoschedTime := timeapi.Now()
+	timeapi.Gosched()
+	afterGoschedTime := timeapi.Now()
 	elapsedGosched := afterGoschedTime.Sub(beforeGoschedTime)
 	assert.GreaterOrEqual(t, elapsedGosched, 45*time.Nanosecond)
 
-	timeApi.Stop()
-	events := timeApi.AppendEvents(make([]string, 0, 1024))
+	timeapi.Stop()
+	events := timeapi.AppendEvents(make([]string, 0, 1024))
 	assert.Equal(t, 21, len(events)) // ideally this is 19 here
 
 	// this might be problematic, this is a race condition, theres no guarantee all the other threads have successfully incremented yet
 	assert.Equal(t, expectedCount, atomic.LoadInt64(&tickCount))
-	AssertEventCount(t, timeApi, 21)
+	AssertEventCount(t, timeapi, 21)
+
+	assert.Equal(t, 1, timeapi.TickProducerCount())
+
+	tickProducerNames := timeapi.AppendTickProducerNames(make([]string, 0, 1024))
+	assert.Equal(t, 1, len(tickProducerNames))
+
+	assert.True(t, strings.HasPrefix(tickProducerNames[0], "tp/4/Tick"))
+	assert.True(t, strings.HasSuffix(tickProducerNames[0], "(Always leaks - dont use)"))
 }
 
 func BenchmarkGosched(b *testing.B) {

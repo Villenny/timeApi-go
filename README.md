@@ -135,6 +135,22 @@ timeapi := timeApi.NewFake().
     Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
 ```
 
+## Monitoring your timer state
+- internally the time api stores anything that "ticks" as a TickProducer.
+
+```
+timeapi := timeApi.NewFake().Start(time.Now())
+
+assert.Equal(t, 0, timeapi.TickProducerCount())
+
+events := timeapi.AppendEvents(make([]string, 0, 1024))
+assert.Equal(t, 0, len(events))
+
+tickProducerNames := timeapi.AppendTickProducerNames(make([]string, 0, 1024))
+assert.Equal(t, 0, len(tickProducerNames))
+
+
+```
 
 
 # Using the timerProvider convenience wrapper
@@ -156,6 +172,24 @@ timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
 // this stops the timer cleanly, leaking nothing, plus has a lock internally, so you can assert anything it touched safely in tests
 // like the above runCount variable.
 timer.Stop()
+```
+
+You can also monitor the timer for how many times its ticked, or wait until its done the tick count you desire this can be helpful in tests:
+```
+timeapi := timeApi.NewFake().
+    SetOptions(timeApi.FakeOptions().WithTesting(t).WithFlushTime(0)).
+    Start(time.Date(2009, 11, 17, 20, 34, 58, 0, time.UTC))
+
+timerProvider, _ := NewTimerProvider(timeapi)
+var runCount int
+const CHECK_INTERVAL = 100 * time.Millisecond
+timer := timerProvider.SetInterval(func() { runCount += 1 }, CHECK_INTERVAL)
+clock_.IncrementClock(CHECK_INTERVAL)
+timer.WaitUntilCount(1)
+
+assert.Equal(t, timer.Count(), runCount)
+timeapi.Stop()
+assert.Equal(t, 1, runCount)
 ```
 
 

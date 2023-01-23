@@ -160,8 +160,11 @@ func (t *IntervalTimer) Count() int {
 	return t.count
 }
 
-func (t *IntervalTimer) WaitUntilCount(count int) {
+func (t *IntervalTimer) WaitUntilCount(count int) (sleepCount int) {
+	sleepCount = 0
 	for count > t.Count() {
+		sleepCount += 1
 		t.timeApi.Sleep(1 * time.Millisecond)
 	}
+	return sleepCount
 }
