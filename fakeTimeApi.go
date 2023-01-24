@@ -457,8 +457,8 @@ type FakeTicker struct {
 	name        string
 	when        time.Time
 	d           time.Duration
-	C           <-chan Time // The channel on which the ticks are delivered.
-	c           chan Time   // The channel on which the ticks are delivered.
+	C           <-chan time.Time // The channel on which the ticks are delivered.
+	c           chan time.Time   // The channel on which the ticks are delivered.
 	tickCount   int64
 	isStopped   bool
 }
@@ -477,7 +477,7 @@ func (t *FakeTimeApi) newTicker(d time.Duration, typeName string) *FakeTicker {
 		panic("cant reset to a duration <= 0")
 	}
 
-	c := make(chan Time, 1)
+	c := make(chan time.Time, 1)
 	fake := &FakeTicker{
 		fakeTimeApi: t,
 		name:        "tp/" + strconv.Itoa(t.nextId) + "/" + typeName,
@@ -535,7 +535,7 @@ func (t *FakeTicker) Stop() {
 // Reset stops a ticker and resets its period to the specified duration.
 // The next tick will arrive after the new period elapses. The duration d
 // must be greater than zero; if not, Reset will panic.
-func (t *FakeTicker) Reset(d Duration) {
+func (t *FakeTicker) Reset(d time.Duration) {
 	if d <= 0 {
 		panic("cant reset to a duration <= 0")
 	}
@@ -617,8 +617,8 @@ type FakeTimer struct {
 	name        string
 	when        time.Time
 	d           time.Duration
-	C           <-chan Time // The channel on which the ticks are delivered. Public readonly alias
-	c           chan Time   // The channel on which the ticks are delivered.
+	C           <-chan time.Time // The channel on which the ticks are delivered. Public readonly alias
+	c           chan time.Time   // The channel on which the ticks are delivered.
 	fn          func()
 	gotTick     bool
 	isStopped   bool
@@ -628,9 +628,9 @@ func (t *FakeTimeApi) newTimer(d time.Duration, fn func(), typeName string) *Fak
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	var c chan Time
+	var c chan time.Time
 	if fn == nil {
-		c = make(chan Time, 1)
+		c = make(chan time.Time, 1)
 	}
 	fake := &FakeTimer{
 		fakeTimeApi: t,
@@ -718,7 +718,7 @@ func (t *FakeTimer) Stop() bool {
 // goroutine running f does not run concurrently with the prior
 // one. If the caller needs to know whether the prior execution of
 // f is completed, it must coordinate with f explicitly.
-func (t *FakeTimer) Reset(d Duration) bool {
+func (t *FakeTimer) Reset(d time.Duration) bool {
 	t.fakeTimeApi.mutex.Lock()
 	defer t.fakeTimeApi.mutex.Unlock()
 

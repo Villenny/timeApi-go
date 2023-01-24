@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Convenience wrapper for making tickers. Hmm, should probably have called it a TickerFuncProvider
 type TimerProvider struct {
 	timeApi TimeApi
 }
@@ -16,8 +17,8 @@ func NewTimerProvider(timeApi TimeApi) (*TimerProvider, error) {
 	}, nil
 }
 
-// IntervalTimer :
-type IntervalTimer struct {
+// IntervalFuncTicker, should probably be called a TickerFunc
+type IntervalFuncTicker struct {
 	done       chan bool
 	ticker     *Ticker
 	fn         func(tm time.Time)
@@ -31,7 +32,7 @@ type IntervalTimer struct {
 	started    time.Time
 }
 
-func wrapperFn(it *IntervalTimer) {
+func wrapperFn(it *IntervalFuncTicker) {
 	for !it.gotDone {
 		select {
 		case item, ok := <-it.ticker.C:
@@ -73,11 +74,14 @@ func wrapperFn(it *IntervalTimer) {
 	}
 }
 
-func (t *TimerProvider) SetInterval(fn func(tm time.Time), interval time.Duration) *IntervalTimer {
+// creates a ticker, and applies a mutex so that the func(tm time.Time) you pass will be invoked every heart beat
+// it can only run one at time (it will serialize around its internal mutex)
+// stopping it is likewise safe via mutex
+func (t *TimerProvider) SetInterval(fn func(tm time.Time), interval time.Duration) *IntervalFuncTicker {
 	ticker := t.timeApi.NewTicker(interval)
 	done := make(chan bool, 0)
 
-	intervalTimer := &IntervalTimer{
+	intervalFuncTicker := &IntervalFuncTicker{
 		ticker:    ticker,
 		fn:        fn,
 		done:      done,
@@ -88,12 +92,13 @@ func (t *TimerProvider) SetInterval(fn func(tm time.Time), interval time.Duratio
 		started:   t.timeApi.Now(),
 	}
 
-	go wrapperFn(intervalTimer)
+	go wrapperFn(intervalFuncTicker)
 
-	return intervalTimer
+	return intervalFuncTicker
 }
 
-func (t *IntervalTimer) ClearInterval() *IntervalTimer {
+// Stop the ticker func from executing in a race safe way.
+func (t *IntervalFuncTicker) ClearInterval() *IntervalFuncTicker {
 	func() {
 		t.mutex.Lock()
 		defer t.mutex.Unlock()
@@ -104,7 +109,7 @@ func (t *IntervalTimer) ClearInterval() *IntervalTimer {
 			panic("WTF - tried to stop a bogus timer")
 		}
 		if !t.isRunning {
-			panic("WTF - tried to stop a tmer thats not running")
+			panic("WTF - tried to stop a timer thats not running")
 		}
 		if t.gotDone {
 			panic("WTF - tried to stop a timer thats stopping")
@@ -154,13 +159,16 @@ func (t *IntervalTimer) ClearInterval() *IntervalTimer {
 	return nil
 }
 
-func (t *IntervalTimer) Count() int {
+// get the number of times the callback function has been invoked
+func (t *IntervalFuncTicker) Count() int {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	return t.count
 }
 
-func (t *IntervalTimer) WaitUntilCount(count int) (sleepCount int) {
+// spin with timeapi.Sleep until the invocation count is as specified
+// returns the # of 1ms sleeps it waited.
+func (t *IntervalFuncTicker) WaitUntilCount(count int) (sleepCount int) {
 	sleepCount = 0
 	for count > t.Count() {
 		sleepCount += 1

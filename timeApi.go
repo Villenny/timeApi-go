@@ -9,10 +9,6 @@ import (
 	"time"
 )
 
-// Re-export of time.Duration
-type Duration = time.Duration
-type Time = time.Time
-
 /*
 UnixNano only works within ±292 years around 1970 (between 1678 and 2262). Also, since maximum duration is ~292 years, even those two will give a clamped result on Sub
 */
@@ -20,54 +16,87 @@ var MaxDuration = 1<<63 - 1
 var MinTime = time.Unix(-2208988800, 0) // Jan 1, 1900
 var MaxTime = MinTime.Add(1<<63 - 1)
 
+// ///////////////////////////////////////////////////////////////////
+
 // the interface to a ticker, real or fake
 type TickerAdapter interface {
 	Stop()
-
-	// Reset stops a ticker and resets its period to the specified duration.
-	// The next tick will arrive after the new period elapses. The duration d
-	// must be greater than zero; if not, Reset will panic.
-	Reset(d Duration)
+	Reset(d time.Duration)
 }
 
 // Cant put a channel datamember in an interface, so we need an adapter to wrap and make the channel accessible
+// has the comments from time.Ticker on its methods so your intellesence looks the same
 type Ticker struct {
-	C      <-chan Time   // republished channel from the internal adapter
-	ticker TickerAdapter // the real or fake ticker
-	name   string        // every ticker is given a unique string id for easier debugging
+	C      <-chan time.Time // republished channel from the internal adapter
+	ticker TickerAdapter    // the real or fake ticker
+	name   string           // every ticker is given a unique string id for easier debugging
 }
 
-func (t *Ticker) Stop()            { t.ticker.Stop() }
-func (t *Ticker) Reset(d Duration) { t.ticker.Reset(d) }
+// Stop turns off a ticker. After Stop, no more ticks will be sent.
+// Stop does not close the channel, to prevent a concurrent goroutine
+// reading from the channel from seeing an erroneous "tick".
+func (t *Ticker) Stop() { t.ticker.Stop() }
+
+// Reset stops a ticker and resets its period to the specified duration.
+// The next tick will arrive after the new period elapses. The duration d
+// must be greater than zero; if not, Reset will panic.
+func (t *Ticker) Reset(d time.Duration) { t.ticker.Reset(d) }
+
+// ///////////////////////////////////////////////////////////////////
 
 // the interface to a timer, real or fake
 type TimerAdapter interface {
 	Stop() bool
-
-	// Reset should be invoked only on stopped or expired timers with drained channels.
-	//
-	// If a program has already received a value from t.C, the timer is known
-	// to have expired and the channel drained, so t.Reset can be used directly.
-	// If a program has not yet received a value from t.C, however,
-	// the timer must be stopped and—if Stop reports that the timer expired
-	// before being stopped—the channel explicitly drained:
-	//
-	//	if !t.Stop() {
-	//		<-t.C
-	//	}
-	//	t.Reset(d)
-	Reset(d Duration) bool
+	Reset(d time.Duration) bool
 }
 
 // Cant put a channel datamember in an interface, so we need an adapter to wrap and make the channel accessible
+// has the comments from time.Timer on its methods so your intellesence looks the same
 type Timer struct {
-	C     <-chan Time  // republished channel from the internal adapter
-	timer TimerAdapter // the real or fake timer
-	name  string       // every timer is given a unique string id for easier debugging
+	C     <-chan time.Time // republished channel from the internal adapter
+	timer TimerAdapter     // the real or fake timer
+	name  string           // every timer is given a unique string id for easier debugging
 }
 
-func (t *Timer) Stop() bool            { return t.timer.Stop() }
-func (t *Timer) Reset(d Duration) bool { return t.timer.Reset(d) }
+// Stop prevents the Timer from firing.
+// It returns true if the call stops the timer, false if the timer has already
+// expired or been stopped.
+// Stop does not close the channel, to prevent a read from the channel succeeding
+// incorrectly.
+//
+// To ensure the channel is empty after a call to Stop, check the
+// return value and drain the channel.
+// For example, assuming the program has not received from t.C already:
+//
+//	if !t.Stop() {
+//		<-t.C
+//	}
+//
+// This cannot be done concurrent to other receives from the Timer's
+// channel or other calls to the Timer's Stop method.
+//
+// For a timer created with AfterFunc(d, f), if t.Stop returns false, then the timer
+// has already expired and the function f has been started in its own goroutine;
+// Stop does not wait for f to complete before returning.
+// If the caller needs to know whether f is completed, it must coordinate
+// with f explicitly.
+func (t *Timer) Stop() bool { return t.timer.Stop() }
+
+// Reset should be invoked only on stopped or expired timers with drained channels.
+//
+// If a program has already received a value from t.C, the timer is known
+// to have expired and the channel drained, so t.Reset can be used directly.
+// If a program has not yet received a value from t.C, however,
+// the timer must be stopped and—if Stop reports that the timer expired
+// before being stopped—the channel explicitly drained:
+//
+//	if !t.Stop() {
+//		<-t.C
+//	}
+//	t.Reset(d)
+func (t *Timer) Reset(d time.Duration) bool { return t.timer.Reset(d) }
+
+// ///////////////////////////////////////////////////////////////////
 
 // Inspired by github.com/benbjohnson/clock
 // wrap all the global time methods, plus gosched, and the context timeouts
