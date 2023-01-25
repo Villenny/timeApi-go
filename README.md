@@ -8,7 +8,9 @@
 [![Documentation](https://godoc.org/github.com/Villenny/timeApi-go?status.svg)](http://godoc.org/github.com/Villenny/timeApi-go)
 
 # timeApi-go
-- Non global instance wrapper for go timer calls, plus matching fake
+Non global instance wrapper for go time/context/gosched calls, plus matching fake for tests.
+It provides an interface around the standard library's time package so that the application can use the realtime clock
+while tests can use the mock clock.
 
 Inspired by https://github.com/benbjohnson/clock it worked great for a while until my project had too many bg threads running.
 
